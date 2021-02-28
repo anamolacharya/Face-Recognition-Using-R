@@ -1,0 +1,294 @@
+#Anamol Acharya
+#R11651561
+#Assignment 2
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+```
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### Chart A
+
+```{r}
+require(dplyr)
+
+setwd("C:\\Users\\anamo\\Documents\\R\\FaceRecognition")
+# The data set of the images is read from the given directory that displays the x labels.
+X_df <- read.csv("C:\\Users\\anamo\\Documents\\R\\FaceRecognition\\olivetti_X.csv",header = F) %>% as.matrix()
+
+## The data set of the images is read from the given directory that displays the ylabels.
+y_df <- read.csv("C:\\Users\\anamo\\Documents\\R\\FaceRecognition\\olivetti_Y.csv",header = F) %>% as.matrix()
+
+#This function plots the given image data a
+plt_img <- function(x){ image(x, col=grey(seq(0, 1, length=256)))}
+
+# Images are visualized here.
+par(mfrow=c(1,2))
+par(mar=c(0.1,0.1,0.1,0.1))
+
+# The first vector is displayed here 
+b <- matrix(as.numeric(X_df[1, ]), nrow=64, byrow=T)
+plt_img(b)
+
+
+# The first image is rotated 90 degrees for the better display
+c <- t(apply(matrix(as.numeric(X_df[1, ]), nrow=64, byrow=T), 2, rev))
+plt_img(c)
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### Chart B
+
+```{r}
+newdata<-NULL
+#for loop to rotate each and every images to a new file for better display in R
+for(i in 1:nrow(X_df))
+{
+  # This line of code rotate the image 90 degree
+  c <- as.numeric((apply(matrix(as.numeric(X_df[i, ]), nrow=64, byrow=T), 2, rev)))
+  
+  # new vector is daved in newdata
+  newdata <- rbind(newdata,c)
+}
+
+df=as.data.frame(newdata)
+write.csv(df,'C:\\Users\\anamo\\Documents\\R\\FaceRecognition\\train_faces.csv',row.names=FALSE) #exact location for the imgage going to s
+
+# Next time you can start from loading train_faces.csv
+# df = read.csv('C:/Python36/my_project/project_test/train_faces.csv',header = T)
+
+
+#mean values
+par(mfrow=c(2,2))
+par(mar=c(0.1,0.1,0.1,0.1))
+
+AV1=colMeans(data.matrix(df[1:10,]))
+plt_img(matrix(AV1,nrow=64,byrow=T))
+
+AV2=colMeans(data.matrix(df[11:20,]))
+plt_img(matrix(AV2,nrow=64,byrow=T))
+
+AV39=colMeans(data.matrix(df[381:390,]))
+plt_img(matrix(AV39,nrow=64,byrow=T))
+
+AV40=colMeans(data.matrix(df[391:400,]))
+plt_img(matrix(AV40,nrow=64,byrow=T))
+```
+
+### Chart C
+
+```{r}
+library(RSpectra)
+
+# df <- read.csv("C:/Python36/my_project/project_test/train_faces.csv") 
+D <- data.matrix(df)
+
+## Let's look at the average face, and need to be substracted from all image data
+average_face=colMeans(df)
+AVF=matrix(average_face,nrow=1,byrow=T)
+plt_img(matrix(average_face,nrow=64,byrow=T))
+```
+
+### Chart D
+```{r}
+# Perform PCA on the data
+
+# Step 1: scale data
+# Scale as follows: mean equal to 0, stdv equal to 1
+D <- scale(D)
+
+# Step 2: calculate covariance matrix
+A <- cov(D)
+A_ <- t(D) %*% D / (nrow(D)-1)
+# Note that the two matrices are the same
+max(A - A_) # Effectively zero
+
+rm(A_)
+
+# Note: diagonal elements are variances of images, off diagonal are covariances between images
+identical(var(D[, 1]), A[1,1])
+
+identical(var(D[, 2]), A[2,2])
+
+identical(cov(D[, 1], D[, 2]), A[1,2])
+
+# Step 3: calculate eigenvalues and eigenvectors
+
+# Calculate the largest 40 eigenvalues and corresponding eigenvectors
+eigs <- eigs(A, 40, which = "LM")
+# Eigenvalues
+eigenvalues <- eigs$values
+# Eigenvectors (also called loadings or "rotation" in R prcomp function: i.e. prcomp(A)$rotation)
+eigenvectors <- eigs$vectors
+
+par(mfrow=c(1,1))
+par(mar=c(2.5,2.5,2.5,2.5))
+y=eigenvalues[1:40]
+# First 40 eigenvalues dominate
+plot(1:40, y, type="o", log = "y", main="Magnitude of the 40 biggest eigenvalues", xlab="Eigenvalue #", ylab="Magnitude")
+
+sum(eigenvalues)/sum(eigen(A)$values)
+
+D_new <- D %*% eigenvectors
+
+par(mfrow=c(3,2))
+par(mar=c(0.2,0.2,0.2,0.2))
+for (i in 1:6){
+  plt_img(matrix(as.numeric(eigenvectors[, i]),nrow=64,byrow=T))
+}
+
+```
+
+
+
+### Chart E
+```{r}
+par(mfrow=c(2,2))
+par(mar=c(2,2,2,2))
+
+# projection of 1st photo into eigen space
+# reduce the dimension from 4096 to 40
+PF1 <- data.matrix(df[1,]) %*% eigenvectors
+barplot(PF1,main="projection coefficients in eigen space", col="blue",ylim = c(-40,10))
+legend("topright", legend = "1st photo")
+
+# projection of 11th photo into eigen space
+# reduce the dimension from 4096 to 40
+PF2 <- data.matrix(df[2,]) %*% eigenvectors
+barplot(PF2,main="projection coefficients in eigen space", col="blue",ylim = c(-40,10))
+legend("topright", legend = "2nd photo")
+
+# projection of 1st photo into eigen space
+# reduce the dimension from 4096 to 40
+PF3 <- data.matrix(df[3,]) %*% eigenvectors
+barplot(PF3,main="projection coefficients in eigen space", col="blue",ylim = c(-40,10))
+legend("topright", legend = "3rd photo")
+
+# projection of 11th photo into eigen space
+# reduce the dimension from 4096 to 40
+PF4 <- data.matrix(df[4,]) %*% eigenvectors
+barplot(PF4,main="projection coefficients in eigen space", col="blue",ylim = c(-40,10))
+legend("topright", legend = "4th photo")
+
+par(mfrow=c(2,2))
+par(mar=c(2,2,2,2))
+
+# projection of 1st photo into eigen space
+# reduce the dimension from 4096 to 40
+PF1 <- data.matrix(df[1,]) %*% eigenvectors
+barplot(PF1,main="projection coefficients in eigen space", col="blue",ylim = c(-40,10))
+legend("topright", legend = "1st photo")
+
+# projection of 11th photo into eigen space
+# reduce the dimension from 4096 to 40
+PF2 <- data.matrix(df[11,]) %*% eigenvectors
+barplot(PF2,main="projection coefficients in eigen space", col="red",ylim = c(-40,10))
+legend("topright", legend = "11th photo")
+
+# projection of 1st photo into eigen space
+# reduce the dimension from 4096 to 40
+PF3 <- data.matrix(df[21,]) %*% eigenvectors
+barplot(PF3,main="projection coefficients in eigen space", col="green",ylim = c(-40,10))
+legend("topright", legend = "21st photo")
+
+# projection of 11th photo into eigen space
+# reduce the dimension from 4096 to 40
+PF4 <- data.matrix(df[31,]) %*% eigenvectors
+barplot(PF4,main="projection coefficients in eigen space", col="grey",ylim = c(-40,10))
+legend("topright", legend = "31st photo")
+
+# Every face has different projection on eigenvector space.
+# We can use these new fewer values for a classification task.
+par(mfrow=c(2,2))
+par(mar=c(1,1,1,1))
+
+# 1st person 1st photo
+plt_img(matrix(as.numeric(df[1, ]), nrow=64, byrow=T))
+
+# 1st person project into eigen space and reconstruct
+PF1 <- data.matrix(df[1,]) %*% eigenvectors
+RE1 <- PF1 %*% t(eigenvectors)
+plt_img(matrix(as.numeric(RE1),nrow=64,byrow=T))
+
+# 2nd person 1st photo
+plt_img(matrix(as.numeric(df[11, ]), nrow=64, byrow=T))
+
+# 2nd persoon project into eigen space and reconstruct
+PF2 <- data.matrix(df[11,]) %*% eigenvectors
+RE2 <- PF2 %*% t(eigenvectors)
+plt_img(matrix(as.numeric(RE2),nrow=64,byrow=T))
+
+
+par(mfrow=c(2,2))
+par(mar=c(1,1,1,1))
+
+# 1st person 1st photo
+plt_img(matrix(as.numeric(df[1, ]), nrow=64, byrow=T))
+
+# average face
+average_face=colMeans(df)
+AVF=matrix(average_face,nrow=1,byrow=T)
+plt_img(matrix(average_face,nrow=64,byrow=T))
+
+# project into eigen space and back
+PF1 <- data.matrix(df[1,]) %*% eigenvectors
+RE1 <- PF1 %*% t(eigenvectors)
+plt_img(matrix(as.numeric(RE1),nrow=64,byrow=T))
+
+# add the average face
+RE1AVF=RE1+AVF
+plt_img(matrix(as.numeric(RE1AVF),nrow=64,byrow=T))
+
+par(mfrow=c(2,2))
+par(mar=c(1,1,1,1))
+
+# 3rd person 31st photo
+plt_img(matrix(as.numeric(df[31, ]), nrow=64, byrow=T))
+
+# average face
+average_face=colMeans(df)
+AVF=matrix(average_face,nrow=1,byrow=T)
+plt_img(matrix(average_face,nrow=64,byrow=T))
+
+# project into eigen space and back
+PF1 <- data.matrix(df[31,]) %*% eigenvectors
+RE1 <- PF1 %*% t(eigenvectors)
+plt_img(matrix(as.numeric(RE1),nrow=64,byrow=T))
+
+# add the average face
+RE1AVF=RE1+AVF
+plt_img(matrix(as.numeric(RE1AVF),nrow=64,byrow=T))
+
+# New photo under test, say, 142nd photo
+# Transform onto eigen space to find the coefficients
+PF1 <- data.matrix(df[142,]) %*% eigenvectors
+
+# Transform all the traning photos onto eigen space and get the coefficients
+PFall <- data.matrix(df) %*% eigenvectors
+
+# Find the simple difference and multiplied by itself to avoid negative value
+test <- matrix(rep(1,400),nrow=400,byrow=T)
+test_PF1 <- test %*% PF1
+Diff <- PFall-test_PF1
+y <- (rowSums(Diff)*rowSums(Diff))
+
+# Find the minimum number to match the photo in the files
+x=c(1:400)
+newdf=data.frame(cbind(x,y))
+
+the_number = newdf$x[newdf$y == min(newdf$y)]
+
+par(mfrow=c(1,1))
+par(mar=c(1,1,1,1))
+barplot(y,main = "Similarity Plot: 0 = Most Similar")
+
+cat("the minimum number occurs at row = ", the_number)
+
+plt_img(matrix(as.numeric(df[the_number, ]), nrow=64, byrow=T))
+
+cat("The photo match the number#",the_number,"photo in the files")
+```
